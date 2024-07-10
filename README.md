@@ -10,9 +10,9 @@
 high priority:
 
 - [ ] allow prompter to set seed
-- [ ] play sound effect when running a new prompt
+- [x] play sound effect when running a new prompt
 - [x] record of prompts
-- [ ] store the outputs in r2 (they are deleted from replicate after an hour)
+- [x] store the outputs in r2 (they are deleted from replicate after an hour)
 - [x] empty text input if prompter hits escape
 - [ ] determine correct model (currently SD3)
 
