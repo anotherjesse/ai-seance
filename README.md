@@ -1,9 +1,17 @@
+## Instructions:
+
+- visit the website
+- type a new prompt, hit enter to load
+- hit escape to clear the text input
+
+## TODO
+
 high priority:
 
 - [ ] allow prompter to set seed
 - [ ] play sound effect when running a new prompt
 - [ ] record of prompts and outputs
-- [ ] empty text input after image loads
+- [x] empty text input if prompter hits escape
 - [ ] determine correct model (currently SD3)
 
 medium priority:

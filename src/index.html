@@ -129,6 +129,12 @@
             if (event.key === 'Enter') {
                 updateImage();
             }
+            if (event.key === 'Escape') {
+                textInputs.forEach(el => {
+                    el.value = '';
+                });
+
+            }
         });
 
         // Initial update
