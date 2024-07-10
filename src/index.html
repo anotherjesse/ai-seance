@@ -13,6 +13,7 @@
             height: 100%;
             margin: 0;
             overflow: hidden;
+            font-family: 'Crimson Text', serif;
         }
 
         .image-text {
@@ -24,7 +25,6 @@
             max-width: 600px;
             padding: 5px;
             background-color: rgba(255, 255, 255, 0.7);
-            font-family: 'Crimson Text', serif;
         }
 
         .top {
@@ -59,7 +59,7 @@
     </style>
 </head>
 
-<body class="bg-black flex flex-col">
+<body class="bg-black flex flex-col font-['Crimson_Text']">
     <!-- Portal for Secret and Event Name -->
     <div id="secretModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
         <div class="bg-gray-800 p-8 rounded-lg shadow-lg">
@@ -68,7 +68,8 @@
                 class="w-full mb-4 p-2 border border-gray-600 rounded bg-gray-700 text-white">
             <input id="eventNameInput" type="text" placeholder="Name the ritual"
                 class="w-full mb-4 p-2 border border-gray-600 rounded bg-gray-700 text-white">
-            <button id="submitSecret" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">Invoke</button>
+            <button id="submitSecret"
+                class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">Invoke</button>
         </div>
     </div>
 
@@ -76,6 +77,9 @@
         <div class="relative max-w-full max-h-full">
             <img id="mainImage" src="https://picsum.photos/seed/hilma/1024" alt="Main Image"
                 class="max-w-full max-h-[90vh] object-contain">
+            <div id="errorMessage"
+                class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white text-xl font-bold hidden">
+            </div>
             <input id="topText" class="image-text top" placeholder="~">
             <input id="bottomText" class="image-text bottom" placeholder="Enter prompt here">
             <input id="leftText" class="image-text left" placeholder="~">
@@ -97,6 +101,18 @@
         let secret = '';
         let eventName = '';
 
+        const errorMessage = document.getElementById('errorMessage');
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        function clearError() {
+            errorMessage.textContent = '';
+            errorMessage.classList.add('hidden');
+        }
+
         submitSecretButton.addEventListener('click', () => {
             secret = secretInput.value.trim();
             eventName = eventNameInput.value.trim();
@@ -110,6 +126,7 @@
         });
 
         async function updateImage() {
+            clearError(); // Clear any existing error messages
             const prompt = bottomText.value.trim();
 
             if (!prompt) {
@@ -129,6 +146,10 @@
                     body: JSON.stringify({ prompt, seed, secret, event: eventName }),
                 });
 
+                if (response.status === 401) {
+                    throw new Error('Invalid secret');
+                }
+
                 if (!response.ok) {
                     throw new Error('API request failed');
                 }
@@ -144,12 +165,18 @@
                 console.error('Error updating image:', error);
                 // Fade the image back in if there's an error
                 mainImage.style.opacity = '1';
-                // You might want to show an error message to the user here
+
+                if (error.message === 'Invalid secret') {
+                    showError('The spirits reject your offering. Cleanse your mind and begin anew.');
+                } else {
+                    showError('The ethereal connection is disturbed. Pause and try again.');
+                }
             }
         }
 
         textInputs.forEach(input => {
             input.addEventListener('input', () => {
+                clearError(); // Clear error message on input
                 textInputs.forEach(el => {
                     if (el !== input) {
                         el.value = input.value;
@@ -163,10 +190,10 @@
                 updateImage();
             }
             if (event.key === 'Escape') {
+                clearError(); // Clear error message on Escape key
                 textInputs.forEach(el => {
                     el.value = '';
                 });
-
             }
         });
 
