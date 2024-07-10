@@ -33,14 +33,19 @@ export default {
 				const output = await replicate.run("stability-ai/stable-diffusion-3", { input });
 
 				let imageUrl = output[0];
+				let key = new URL(imageUrl).pathname.slice(1);
+				let ourURL = `${env.ASSETS_URL}/${key}`
+
+				await fetch(imageUrl).then(request => env.ASSETS.put(key, request.body))
+
 
 				await env.DB.prepare(
 					"INSERT INTO Runs (Event, Prompt, URL, Seed) VALUES (?, ?, ?, ?)"
 				)
-					.bind(event || "unknown", prompt, imageUrl, seed)
+					.bind(event || "unknown", prompt, ourURL, seed)
 					.all();
 
-				return new Response(JSON.stringify({ imageUrl }), {
+				return new Response(JSON.stringify({ imageUrl: ourURL }), {
 					headers: { 'Content-Type': 'application/json' }
 				});
 			} catch (error) {

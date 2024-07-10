@@ -88,6 +88,7 @@
     </div>
 
     <script>
+        const sound = new Audio('https://seance-assets.anotherjesse.com/wolf-4s.mp3')
         const mainImage = document.getElementById('mainImage');
         const bottomText = document.getElementById('bottomText');
         const textInputs = ['topText', 'bottomText', 'leftText', 'rightText'].map(id => document.getElementById(id));
@@ -134,6 +135,9 @@
             }
 
             try {
+                // Play the sound
+                sound.play();
+
                 // Fade out the current image
                 mainImage.style.opacity = '0';
                 let seed = Math.floor(Math.random() * 1000000000);
