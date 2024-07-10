@@ -60,7 +60,19 @@
 </head>
 
 <body class="bg-black flex flex-col">
-    <div id="imageContainer" class="flex-grow flex items-center justify-center p-0">
+    <!-- Portal for Secret and Event Name -->
+    <div id="secretModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-lg">
+            <h2 class="text-2xl mb-4 font-bold text-white">Whisper Your Secrets</h2>
+            <input id="secretInput" type="password" placeholder="Whisper your secret"
+                class="w-full mb-4 p-2 border border-gray-600 rounded bg-gray-700 text-white">
+            <input id="eventNameInput" type="text" placeholder="Name the ritual"
+                class="w-full mb-4 p-2 border border-gray-600 rounded bg-gray-700 text-white">
+            <button id="submitSecret" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">Invoke</button>
+        </div>
+    </div>
+
+    <div id="imageContainer" class="flex-grow flex items-center justify-center p-0 hidden">
         <div class="relative max-w-full max-h-full">
             <img id="mainImage" src="https://picsum.photos/seed/hilma/1024" alt="Main Image"
                 class="max-w-full max-h-[90vh] object-contain">
@@ -75,6 +87,27 @@
         const mainImage = document.getElementById('mainImage');
         const bottomText = document.getElementById('bottomText');
         const textInputs = ['topText', 'bottomText', 'leftText', 'rightText'].map(id => document.getElementById(id));
+
+        const secretModal = document.getElementById('secretModal');
+        const imageContainer = document.getElementById('imageContainer');
+        const submitSecretButton = document.getElementById('submitSecret');
+        const secretInput = document.getElementById('secretInput');
+        const eventNameInput = document.getElementById('eventNameInput');
+
+        let secret = '';
+        let eventName = '';
+
+        submitSecretButton.addEventListener('click', () => {
+            secret = secretInput.value.trim();
+            eventName = eventNameInput.value.trim();
+            if (secret && eventName) {
+                secretModal.classList.add('hidden');
+                imageContainer.classList.remove('hidden');
+                updateImage(); // Initial update after secret is entered
+            } else {
+                alert('Please enter both your secret and the event name.');
+            }
+        });
 
         async function updateImage() {
             const prompt = bottomText.value.trim();
@@ -93,7 +126,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ prompt, seed }),
+                    body: JSON.stringify({ prompt, seed, secret, event: eventName }),
                 });
 
                 if (!response.ok) {
@@ -136,9 +169,6 @@
 
             }
         });
-
-        // Initial update
-        updateImage();
 
         // Update on window resize to maintain aspect ratio
         window.addEventListener('resize', () => {

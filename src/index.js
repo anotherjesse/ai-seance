@@ -11,7 +11,14 @@ export default {
 					auth: env.REPLICATE_API_TOKEN
 				});
 
-				const { prompt, seed } = await request.json();
+				const { prompt, seed, event, secret } = await request.json();
+
+				if (secret !== env.SECRET) {
+					return new Response(JSON.stringify({ error: 'Invalid secret' }), {
+						status: 401,
+						headers: { 'Content-Type': 'application/json' }
+					});
+				}
 
 				const input = {
 					cfg: 4.5,
@@ -27,21 +34,28 @@ export default {
 
 				let imageUrl = output[0];
 
-				// // Simulate image generation based on prompt (replace with actual image generation logic)
-				// await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate processing time
-				// const size = 1024; // Random size between 500 and 999
-				// const imageUrl = `https://picsum.photos/${size}?random=${encodeURIComponent(prompt)}`;
+				await env.DB.prepare(
+					"INSERT INTO Runs (Event, Prompt, URL, Seed) VALUES (?, ?, ?, ?)"
+				)
+					.bind(event || "unknown", prompt, imageUrl, seed)
+					.all();
 
 				return new Response(JSON.stringify({ imageUrl }), {
 					headers: { 'Content-Type': 'application/json' }
 				});
 			} catch (error) {
-				console.log(error)
 				return new Response(JSON.stringify({ error: 'Invalid request' }), {
 					status: 400,
 					headers: { 'Content-Type': 'application/json' }
 				});
 			}
+		}
+
+		if (url.pathname == '/log') {
+			const { results } = await env.DB.prepare(
+				"SELECT * FROM Runs"
+			).all();
+			return Response.json(results);
 		}
 
 		// Serve the HTML for any other request
