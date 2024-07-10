@@ -128,7 +128,20 @@
 
         async function updateImage() {
             clearError(); // Clear any existing error messages
-            const prompt = bottomText.value.trim();
+            let prompt = bottomText.value.trim();
+            let seed = Math.floor(Math.random() * 1000000000);
+
+            // Check if prompt contains '|' and extract seed and prompt
+            if (prompt.includes('|')) {
+                const parts = prompt.split('|');
+                seed = parseInt(parts[1].trim());
+                prompt = parts[0].trim();
+
+                // If seed is not a valid number, use a random seed
+                if (isNaN(seed)) {
+                    seed = Math.floor(Math.random() * 1000000000);
+                }
+            }
 
             if (!prompt) {
                 return;
@@ -140,7 +153,6 @@
 
                 // Fade out the current image
                 mainImage.style.opacity = '0';
-                let seed = Math.floor(Math.random() * 1000000000);
 
                 const response = await fetch('/api/generate-image', {
                     method: 'POST',
