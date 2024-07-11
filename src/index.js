@@ -1,17 +1,53 @@
 import index from "./index.html";
 import Replicate from "replicate";
 
+
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(request.url);
 
 		if (url.pathname === '/api/generate-image' && request.method === 'POST') {
 			try {
+
 				const replicate = new Replicate({
 					auth: env.REPLICATE_API_TOKEN
 				});
 
-				const { prompt, seed, event, secret } = await request.json();
+				const sd3 = ({ seed, prompt }) =>
+					replicate.run("stability-ai/stable-diffusion-3", {
+						input: {
+							cfg: 4.5,
+							seed,
+							prompt,
+							aspect_ratio: "1:1",
+							output_format: "webp",
+							output_quality: 79,
+							negative_prompt: ""
+						}
+					}).then(output => output[0]);
+
+				const sdxl = ({ seed, prompt }) => replicate.run(
+					"stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc",
+					{
+						input: {
+							width: 1024,
+							height: 1024,
+							prompt,
+							seed,
+							scheduler: "K_EULER",
+							num_outputs: 1,
+							guidance_scale: 7.5,
+							apply_watermark: false,
+							negative_prompt: "",
+							prompt_strength: 0.8,
+							num_inference_steps: 25,
+							disable_safety_checker: true
+						}
+					}
+				);
+
+
+				const { prompt, seed, event, secret, model } = await request.json();
 
 				if (secret !== env.SECRET) {
 					return new Response(JSON.stringify({ error: 'Invalid secret' }), {
@@ -20,19 +56,8 @@ export default {
 					});
 				}
 
-				const input = {
-					cfg: 4.5,
-					seed,
-					prompt,
-					aspect_ratio: "1:1",
-					output_format: "webp",
-					output_quality: 79,
-					negative_prompt: ""
-				};
+				const imageUrl = await (model === 'sdxl' ? sdxl({ seed, prompt }) : sd3({ seed, prompt }));
 
-				const output = await replicate.run("stability-ai/stable-diffusion-3", { input });
-
-				let imageUrl = output[0];
 				let key = new URL(imageUrl).pathname.slice(1);
 				let ourURL = `${env.ASSETS_URL}/${key}`
 
@@ -49,6 +74,7 @@ export default {
 					headers: { 'Content-Type': 'application/json' }
 				});
 			} catch (error) {
+				console.log({ error })
 				return new Response(JSON.stringify({ error: 'Invalid request' }), {
 					status: 400,
 					headers: { 'Content-Type': 'application/json' }

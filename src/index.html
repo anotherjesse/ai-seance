@@ -53,8 +53,18 @@
             transform-origin: right center;
         }
 
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
         #mainImage {
             transition: opacity 0.5s ease-in-out;
+        }
+
+        #mainImage.pulsing {
+            animation: pulse 2s infinite;
         }
     </style>
 </head>
@@ -88,7 +98,7 @@
     </div>
 
     <script>
-        const sound = new Audio('https://seance-assets.anotherjesse.com/wolf-4s.mp3')
+        const sound = new Audio('https://seance-assets.anotherjesse.com/shimmer.mp3')
         const mainImage = document.getElementById('mainImage');
         const bottomText = document.getElementById('bottomText');
         const textInputs = ['topText', 'bottomText', 'leftText', 'rightText'].map(id => document.getElementById(id));
@@ -98,6 +108,7 @@
         const submitSecretButton = document.getElementById('submitSecret');
         const secretInput = document.getElementById('secretInput');
         const eventNameInput = document.getElementById('eventNameInput');
+        const model = window.location.search.includes('sd3') ? 'sd3' : 'sdxl';
 
         let secret = '';
         let eventName = '';
@@ -151,15 +162,15 @@
                 // Play the sound
                 sound.play();
 
-                // Fade out the current image
-                mainImage.style.opacity = '0';
+                // Start pulsing effect
+                mainImage.classList.add('pulsing');
 
                 const response = await fetch('/api/generate-image', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ prompt, seed, secret, event: eventName }),
+                    body: JSON.stringify({ prompt, seed, secret, model, event: eventName }),
                 });
 
                 if (response.status === 401) {
@@ -172,15 +183,15 @@
 
                 const data = await response.json();
 
-                // Set the new image source and fade it in
+                // Set the new image source and remove pulsing effect
                 mainImage.onload = () => {
-                    mainImage.style.opacity = '1';
+                    mainImage.classList.remove('pulsing');
                 };
                 mainImage.src = data.imageUrl;
             } catch (error) {
                 console.error('Error updating image:', error);
-                // Fade the image back in if there's an error
-                mainImage.style.opacity = '1';
+                // Stop pulsing effect if there's an error
+                mainImage.classList.remove('pulsing');
 
                 if (error.message === 'Invalid secret') {
                     showError('The spirits reject your offering. Cleanse your mind and begin anew.');
