@@ -54,16 +54,14 @@
         }
 
         @keyframes pulse {
-            0% {
+
+            0%,
+            100% {
                 opacity: 1;
             }
 
             50% {
                 opacity: 0.5;
-            }
-
-            100% {
-                opacity: 1;
             }
         }
 
@@ -72,6 +70,26 @@
         }
 
         #mainImage.pulsing {
+            animation: pulse 2s infinite;
+        }
+
+        #fadeOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            pointer-events: none;
+        }
+
+        #fadeOverlay.fade-in {
+            opacity: 1;
+        }
+
+        #fadeOverlay.pulsing {
             animation: pulse 2s infinite;
         }
     </style>
@@ -95,6 +113,7 @@
         <div class="relative max-w-full max-h-full">
             <img id="mainImage" src="https://seance-assets.anotherjesse.com/black-1024.png" alt="Main Image"
                 class="max-w-full max-h-[90vh] object-contain">
+            <div id="fadeOverlay"></div>
             <div id="errorMessage"
                 class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white text-xl font-bold hidden">
             </div>
@@ -123,6 +142,7 @@
         let eventName = '';
 
         const errorMessage = document.getElementById('errorMessage');
+        const fadeOverlay = document.getElementById('fadeOverlay');
 
         function showError(message) {
             errorMessage.textContent = message;
@@ -173,8 +193,8 @@
                 conjuring.pause();
                 conjuring.currentTime = 0;
 
-                // Start pulsing effect
-                mainImage.classList.add('pulsing');
+                // Start pulsing effect on fadeOverlay
+                fadeOverlay.classList.add('fade-in', 'pulsing');
 
                 const response = await fetch('/api/generate-image', {
                     method: 'POST',
@@ -194,18 +214,25 @@
 
                 const data = await response.json();
 
-                // Set the new image source and remove pulsing effect
-                mainImage.onload = () => {
-                    mainImage.classList.remove('pulsing');
-                    shimmer.pause(); // Stop the shimmer
-                    shimmer.currentTime = 0; // Reset the shimmer to the beginning
-                    conjuring.play();
+                // Set the new image source and handle the fade effect
+                const newImage = new Image();
+                newImage.onload = () => {
+                    mainImage.src = newImage.src;
+                    shimmer.pause();
+                    shimmer.currentTime = 0;
+
+                    // Stop pulsing and fade out the overlay
+                    fadeOverlay.classList.remove('pulsing');
+                    setTimeout(() => {
+                        fadeOverlay.classList.remove('fade-in');
+                        conjuring.play();
+                    }, 50); // Small delay to ensure the new image is rendered
                 };
-                mainImage.src = data.imageUrl;
+                newImage.src = data.imageUrl;
             } catch (error) {
                 console.error('Error updating image:', error);
                 // Stop pulsing effect if there's an error
-                mainImage.classList.remove('pulsing');
+                fadeOverlay.classList.remove('fade-in', 'pulsing');
                 shimmer.pause(); // Stop the shimmer
                 shimmer.currentTime = 0; // Reset the shimmer to the beginning
 
