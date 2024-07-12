@@ -54,9 +54,17 @@
         }
 
         @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
 
         #mainImage {
@@ -85,7 +93,7 @@
 
     <div id="imageContainer" class="flex-grow flex items-center justify-center p-0 hidden">
         <div class="relative max-w-full max-h-full">
-            <img id="mainImage" src="https://picsum.photos/seed/hilma/1024" alt="Main Image"
+            <img id="mainImage" src="https://seance-assets.anotherjesse.com/black-1024.png" alt="Main Image"
                 class="max-w-full max-h-[90vh] object-contain">
             <div id="errorMessage"
                 class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white text-xl font-bold hidden">
@@ -98,7 +106,8 @@
     </div>
 
     <script>
-        const sound = new Audio('https://seance-assets.anotherjesse.com/shimmer.mp3')
+        const shimmer = new Audio('https://seance-assets.anotherjesse.com/shimmer.mp3')
+        const conjuring = new Audio('https://seance-assets.anotherjesse.com/conjuring.mp3');
         const mainImage = document.getElementById('mainImage');
         const bottomText = document.getElementById('bottomText');
         const textInputs = ['topText', 'bottomText', 'leftText', 'rightText'].map(id => document.getElementById(id));
@@ -159,8 +168,10 @@
             }
 
             try {
-                // Play the sound
-                sound.play();
+                // Play the shimmer
+                shimmer.play();
+                conjuring.pause();
+                conjuring.currentTime = 0;
 
                 // Start pulsing effect
                 mainImage.classList.add('pulsing');
@@ -186,12 +197,17 @@
                 // Set the new image source and remove pulsing effect
                 mainImage.onload = () => {
                     mainImage.classList.remove('pulsing');
+                    shimmer.pause(); // Stop the shimmer
+                    shimmer.currentTime = 0; // Reset the shimmer to the beginning
+                    conjuring.play();
                 };
                 mainImage.src = data.imageUrl;
             } catch (error) {
                 console.error('Error updating image:', error);
                 // Stop pulsing effect if there's an error
                 mainImage.classList.remove('pulsing');
+                shimmer.pause(); // Stop the shimmer
+                shimmer.currentTime = 0; // Reset the shimmer to the beginning
 
                 if (error.message === 'Invalid secret') {
                     showError('The spirits reject your offering. Cleanse your mind and begin anew.');

@@ -1,6 +1,6 @@
 import index from "./index.html";
 import Replicate from "replicate";
-
+import * as fal from "@fal-ai/serverless-client";
 
 export default {
 	async fetch(request, env, ctx) {
@@ -12,6 +12,13 @@ export default {
 				const replicate = new Replicate({
 					auth: env.REPLICATE_API_TOKEN
 				});
+
+				fal.config({
+					credentials: env.FAL_KEY
+
+
+				});
+
 
 				const sd3 = ({ seed, prompt }) =>
 					replicate.run("stability-ai/stable-diffusion-3", {
@@ -26,7 +33,7 @@ export default {
 						}
 					}).then(output => output[0]);
 
-				const sdxl = ({ seed, prompt }) => replicate.run(
+				const sdxl_replicate = ({ seed, prompt }) => replicate.run(
 					"stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc",
 					{
 						input: {
@@ -46,6 +53,14 @@ export default {
 					}
 				);
 
+				const sdxl_fal = ({ seed, prompt }) =>
+					fal.subscribe("fal-ai/fast-sdxl", {
+						input: {
+							prompt, seed, enable_safety_checker: false, image_size: "square_hd",
+
+						},
+						logs: false,
+					}).then(result => result.images[0].url);
 
 				const { prompt, seed, event, secret, model } = await request.json();
 
@@ -56,7 +71,7 @@ export default {
 					});
 				}
 
-				const imageUrl = await (model === 'sdxl' ? sdxl({ seed, prompt }) : sd3({ seed, prompt }));
+				const imageUrl = await (model === 'sdxl' ? sdxl_fal({ seed, prompt }) : sd3({ seed, prompt }));
 
 				let key = new URL(imageUrl).pathname.slice(1);
 				let ourURL = `${env.ASSETS_URL}/${key}`
