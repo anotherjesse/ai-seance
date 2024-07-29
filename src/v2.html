@@ -25,6 +25,7 @@
             max-width: 600px;
             padding: 5px;
             background-color: rgba(255, 255, 255, 0.7);
+            z-index: 20; /* Ensure inputs are above the animation */
         }
 
         .top {
@@ -98,8 +99,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 80%;
-            height: 80%;
+            width: 90%; /* Reduce the width */
+            height: 90%; /* Reduce the height */
             z-index: 10;
             display: none; /* Initially hidden */
         }
@@ -120,11 +121,6 @@
         </div>
     </div>
 
-    <!-- Add this new SVG element for the swirling animation -->
-    <svg id="conceptAnimation" class="absolute inset-0 w-full h-full hidden" viewBox="-50 -50 100 100">
-        <path id="orbitPath" d="M0,0 m-40,0 a40,40 0 1,0 80,0 a40,40 0 1,0 -80,0" fill="none" stroke="none"/>
-    </svg>
-
     <div id="imageContainer" class="flex-grow flex items-center justify-center p-0 hidden">
         <div class="relative max-w-full max-h-full">
             <img id="mainImage" src="https://seance-assets.anotherjesse.com/black-1024.png" alt="Main Image"
@@ -134,9 +130,14 @@
                 class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white text-xl font-bold hidden">
             </div>
             <input id="topText" class="image-text top" placeholder="~">
-            <input id="bottomText" class="image-text bottom" placeholder="Enter prompt here">
+            <input id="bottomText" class="image-text bottom" placeholder="Enter concept or ! to start prompting">
             <input id="leftText" class="image-text left" placeholder="~">
             <input id="rightText" class="image-text right" placeholder="~">
+            
+            <!-- Move the SVG element inside the imageContainer -->
+            <svg id="conceptAnimation" class="absolute inset-0 w-full h-full hidden" viewBox="-50 -50 100 100">
+                <path id="orbitPath" d="M0,0 m-40,0 a40,40 0 1,0 80,0 a40,40 0 1,0 -80,0" fill="none" stroke="none"/>
+            </svg>
         </div>
     </div>
 
@@ -173,54 +174,53 @@
         let concepts = [];
         let conceptElements = [];
         let animationStarted = false;
+        let isConceptMode = true;
+
+        function addConcept(concept) {
+            concepts.push(concept);
+            localStorage.setItem('concepts', JSON.stringify(concepts));
+            const element = createConceptElement(concept);
+            animateConcept(element, concepts.length - 1);
+            startConceptAnimation();
+        }
+
+        function createConceptElement(concept) {
+            const svgNS = "http://www.w3.org/2000/svg";
+            
+            const text = document.createElementNS(svgNS, "text");
+            text.textContent = concept;
+            text.setAttribute("fill", "white");
+            text.setAttribute("font-size", "4");
+            text.setAttribute("text-anchor", "middle");
+            
+            const textPath = document.createElementNS(svgNS, "textPath");
+            textPath.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#orbitPath");
+            
+            const startOffset = Math.random() * 100;
+            textPath.setAttribute("startOffset", `${startOffset}%`);
+            
+            text.appendChild(textPath);
+            document.getElementById('conceptAnimation').appendChild(text);
+            
+            conceptElements.push(text);
+            return text;
+        }
 
         function loadConcepts() {
             const savedConcepts = localStorage.getItem('concepts');
             if (savedConcepts) {
                 concepts = JSON.parse(savedConcepts);
                 console.log('Loaded concepts:', concepts);
-                createConceptElements();
+                concepts.forEach((concept, index) => {
+                    const element = createConceptElement(concept);
+                    animateConcept(element, index);
+                });
             }
-        }
-
-        function createConceptElements() {
-            const svgNS = "http://www.w3.org/2000/svg";
-            const orbitPath = document.getElementById('orbitPath');
-            
-            concepts.forEach((concept, index) => {
-                const text = document.createElementNS(svgNS, "text");
-                text.textContent = concept;
-                text.setAttribute("fill", "white");
-                text.setAttribute("font-size", "4");
-                text.setAttribute("text-anchor", "middle");
-                
-                const textPath = document.createElementNS(svgNS, "textPath");
-                textPath.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#orbitPath");
-                
-                const startOffset = Math.random() * 100;
-                textPath.setAttribute("startOffset", `${startOffset}%`);
-                
-                text.appendChild(textPath);
-                document.getElementById('conceptAnimation').appendChild(text);
-                
-                const initialX = (Math.random() - 0.5) * 60; 
-                const initialY = (Math.random() - 0.5) * 40;
-                const initialRotation = Math.random() * 360;
-                const initialScale = 0.5 + Math.random() * 0.5;
-                
-                text.setAttribute('transform', `translate(${initialX}, ${initialY}) scale(${initialScale}) rotate(${initialRotation})`);
-                
-                conceptElements.push(text);
-            });
         }
 
         function startConceptAnimation() {
             if (!animationStarted && concepts.length > 0) {
                 document.getElementById('conceptAnimation').style.display = 'block';
-                conceptElements.forEach((element, index) => {
-                    animateConcept(element, index);
-                });
-                
                 animationStarted = true;
             }
         }
@@ -228,6 +228,13 @@
         function animateConcept(element, index) {
             const duration = 20000 + (index * 1000);
             const delay = index * (duration / concepts.length);
+            
+            const initialX = (Math.random() - 0.5) * 60; 
+            const initialY = (Math.random() - 0.5) * 40;
+            const initialRotation = Math.random() * 360;
+            const initialScale = 0.5 + Math.random() * 0.5;
+            
+            element.setAttribute('transform', `translate(${initialX}, ${initialY}) scale(${initialScale}) rotate(${initialRotation})`);
             
             const animate = () => {
                 const t = (Date.now() + delay) % duration / duration;
@@ -246,6 +253,12 @@
             animate();
         }
 
+        function switchToPromptMode() {
+            isConceptMode = false;
+            bottomText.placeholder = "Enter prompt here";
+            textInputs.forEach(input => input.value = '');
+        }
+
         submitSecretButton.addEventListener('click', () => {
             secret = secretInput.value.trim();
             eventName = eventNameInput.value.trim();
@@ -254,6 +267,7 @@
                 imageContainer.classList.remove('hidden');
                 loadConcepts();
                 startConceptAnimation();
+                bottomText.placeholder = "Enter concept or ! to start prompting";
             } else {
                 alert('Please enter both your secret and the event name.');
             }
@@ -342,7 +356,7 @@
 
         textInputs.forEach(input => {
             input.addEventListener('input', () => {
-                clearError(); // Clear error message on input
+                clearError();
                 textInputs.forEach(el => {
                     if (el !== input) {
                         el.value = input.value;
@@ -353,10 +367,20 @@
 
         bottomText.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
-                updateImage();
+                const input = bottomText.value.trim();
+                if (isConceptMode) {
+                    if (input === '!') {
+                        switchToPromptMode();
+                    } else if (input) {
+                        addConcept(input);
+                        bottomText.value = '';
+                    }
+                } else {
+                    updateImage();
+                }
             }
             if (event.key === 'Escape') {
-                clearError(); // Clear error message on Escape key
+                clearError();
                 textInputs.forEach(el => {
                     el.value = '';
                 });
