@@ -197,18 +197,16 @@
                 const textPath = document.createElementNS(svgNS, "textPath");
                 textPath.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#orbitPath");
                 
-                // Randomize the initial position
                 const startOffset = Math.random() * 100;
                 textPath.setAttribute("startOffset", `${startOffset}%`);
                 
                 text.appendChild(textPath);
                 document.getElementById('conceptAnimation').appendChild(text);
                 
-                // Apply a random initial transform
-                const initialX = (Math.random() - 0.5) * 60; // Random X between -30 and 30
-                const initialY = (Math.random() - 0.5) * 40; // Random Y between -20 and 20
-                const initialRotation = Math.random() * 360; // Random rotation between 0 and 360
-                const initialScale = 0.5 + Math.random() * 0.5; // Random scale between 0.5 and 1
+                const initialX = (Math.random() - 0.5) * 60; 
+                const initialY = (Math.random() - 0.5) * 40;
+                const initialRotation = Math.random() * 360;
+                const initialScale = 0.5 + Math.random() * 0.5;
                 
                 text.setAttribute('transform', `translate(${initialX}, ${initialY}) scale(${initialScale}) rotate(${initialRotation})`);
                 
@@ -228,19 +226,19 @@
         }
 
         function animateConcept(element, index) {
-            const duration = 20000 + (index * 1000); // Vary speed for each concept
+            const duration = 20000 + (index * 1000);
             const delay = index * (duration / concepts.length);
             
             const animate = () => {
                 const t = (Date.now() + delay) % duration / duration;
-                const angle = t * Math.PI * 4; // Double the angle for figure-8 motion
+                const angle = t * Math.PI * 4;
                 const distanceX = Math.sin(angle) * 30;
-                const distanceY = Math.sin(angle * 2) * 20; // Create a figure-8 pattern
+                const distanceY = Math.sin(angle * 2) * 20;
                 const scale = 0.5 + (1 - Math.abs(Math.sin(t * Math.PI * 2))) * 0.5;
                 const x = distanceX * Math.cos(t * Math.PI * 2);
                 const y = distanceY;
-                const rotation = Math.sin(t * Math.PI * 4) * 30; // Increased rotation range
-                
+                const rotation = t * 360;
+
                 element.setAttribute('transform', `translate(${x}, ${y}) scale(${scale}) rotate(${rotation})`);
                 requestAnimationFrame(animate);
             };
@@ -254,8 +252,8 @@
             if (secret && eventName) {
                 secretModal.classList.add('hidden');
                 imageContainer.classList.remove('hidden');
-                loadConcepts(); // Load concepts when the secret is submitted
-                startConceptAnimation(); // Start the animation when secret is submitted
+                loadConcepts();
+                startConceptAnimation();
             } else {
                 alert('Please enter both your secret and the event name.');
             }
@@ -267,17 +265,15 @@
                 animationStarted = false;
             }
             
-            clearError(); // Clear any existing error messages
+            clearError();
             let prompt = bottomText.value.trim();
             let seed = Math.floor(Math.random() * 1000000000);
 
-            // Check if prompt contains '|' and extract seed and prompt
             if (prompt.includes('|')) {
                 const parts = prompt.split('|');
                 seed = parseInt(parts[1].trim());
                 prompt = parts[0].trim();
 
-                // If seed is not a valid number, use a random seed
                 if (isNaN(seed)) {
                     seed = Math.floor(Math.random() * 1000000000);
                 }
