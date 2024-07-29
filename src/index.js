@@ -1,5 +1,6 @@
 import indexHTML from "./index.html";
 import setupHTML from "./setup.html";
+import v2HTML from "./v2.html";
 import Replicate from "replicate";
 import * as fal from "@fal-ai/serverless-client";
 import { Client } from "./claudette.js";
@@ -141,6 +142,13 @@ export default {
 				headers: { 'Content-Type': 'text/html' }
 			})
 		}
+
+		if (url.pathname == "/v2") {
+			return new Response(v2HTML, {
+				headers: { 'Content-Type': 'text/html' }
+			})
+		}
+
 
 		// Serve the HTML for any other request
 		return new Response(indexHTML, {
