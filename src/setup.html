@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept and Prompt Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        textarea,
+        input {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        button {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Concept and Prompt Manager</h1>
+
+    <h2>Concepts</h2>
+    <input type="text" id="conceptInput" placeholder="Enter a concept">
+    <button onclick="addConcept()">Add Concept</button>
+    <ul id="conceptList"></ul>
+
+    <h2>Generator Prompt</h2>
+    <textarea id="generatorInput" rows="5" placeholder="Enter your prompt"></textarea>
+    <button id="generateButton" onclick="generateTheme()">Generate Theme</button>
+
+    <h2>Theme</h2>
+    <textarea id="themeInput" rows="5" placeholder="Enter your theme"></textarea>
+
+    <h2>Seance Prompt</h2>
+    <textarea id="seancePromptInput" rows="5" placeholder="Enter your seance prompt"></textarea>
+
+    <span id="statusMessage"></span>
+
+    <input type="text" id="imageUrlInput" placeholder="Enter your image URL" value="https://replicate.delivery/pbxt/SN9xjfzk4CU3C6dsT6myo7a0bIT0Z2wLT5ww7nQelWNQ9MFTA/out.jpg">
+    <input type="text" id="imageQuestionInput" placeholder="Enter your image question" value="describe the image">
+    <button onclick="questionImage()">Generate Image</button>
+    <textarea id="imageOutput" rows="5" placeholder="Image output will appear here"></textarea>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const secret = urlParams.get('secret');
+
+        let concepts = [];
+        const conceptList = document.getElementById('conceptList');
+        const conceptInput = document.getElementById('conceptInput');
+        const themeInput = document.getElementById('themeInput');
+        const generatorInput = document.getElementById('generatorInput');
+        const seancePromptInput = document.getElementById('seancePromptInput');
+
+        function addConcept() {
+            const concept = conceptInput.value.trim();
+            if (concept) {
+                concepts.push(concept);
+                updateConceptList();
+                conceptInput.value = '';
+                saveData();
+            }
+        }
+
+        function updateConceptList() {
+            conceptList.innerHTML = concepts.map((concept, index) =>
+                `<li>${concept} <span onclick="removeConcept(${index})" style="cursor: pointer;">❌</span></li>`
+            ).join('');
+        }
+
+        function removeConcept(index) {
+            concepts.splice(index, 1);
+            updateConceptList();
+            saveData();
+        }
+
+        function generateTheme() {
+            const generateButton = document.getElementById('generateButton');
+            generateButton.disabled = true;
+            generateButton.textContent = 'Generating...';
+
+            fetch("/api/llm", {
+                method: "POST",
+                body: JSON.stringify({
+                    secret: secret,
+                    system: generatorInput.value,
+                    prompt: concepts.join("\n").trim(),
+                    prefill: "Theme:"
+                })
+            }).then(async response => {
+                if (!response.ok) {
+                    let error = await response.text();
+                    statusMessage.textContent = error;
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                themeInput.value = data.content;
+                saveData();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                generateButton.disabled = false;
+                generateButton.textContent = 'Generate Theme';
+            });
+        }
+
+        function questionImage() {
+            const imageUrl = imageUrlInput.value;
+            const imageQuestion = imageQuestionInput.value;
+            const imageOutput = document.getElementById('imageOutput');
+            fetch("/api/llm", {
+                method: "POST",
+                body: JSON.stringify({
+                    secret: secret,
+                    prompt: imageQuestion,
+                    imageUrl: imageUrl,
+                    system: "You are an expert at describing images. Describe the image in detail.",
+                    prefill: "Describe the image in detail:"
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                imageOutput.value = data.content;
+            })
+        }
+
+        let saveDataTimeout;
+        function saveData() {
+            localStorage.setItem('concepts', JSON.stringify(concepts));
+            localStorage.setItem('theme', themeInput.value);
+            localStorage.setItem('generator', generatorInput.value);
+            localStorage.setItem('seancePrompt', seancePromptInput.value);
+
+            statusMessage.textContent = 'Data saved!';
+            
+            // Clear any existing timeout
+            if (saveDataTimeout) {
+                clearTimeout(saveDataTimeout);
+            }
+            
+            // Set a new timeout
+            saveDataTimeout = setTimeout(() => {
+                statusMessage.textContent = '';
+            }, 3000);
+        }
+
+        function loadData() {
+            const savedConcepts = localStorage.getItem('concepts');
+            const savedTheme = localStorage.getItem('theme');
+            const savedGenerator = localStorage.getItem('generator');
+            const savedSeancePrompt = localStorage.getItem('seancePrompt');
+
+            if (savedConcepts) {
+                concepts = JSON.parse(savedConcepts);
+                updateConceptList();
+            }
+
+            if (savedTheme) {
+                themeInput.value = savedTheme;
+            }
+
+            if (savedGenerator) {
+                generatorInput.value = savedGenerator;
+            }
+
+            if (savedSeancePrompt) {
+                seancePromptInput.value = savedSeancePrompt;
+            }
+        }
+
+        conceptInput.addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addConcept();
+            }
+        });
+
+        const statusMessage = document.getElementById('statusMessage');
+
+        themeInput.addEventListener('input', saveData);
+        generatorInput.addEventListener('input', saveData);
+        seancePromptInput.addEventListener('input', saveData);
+
+        loadData();
+    </script>
+</body>
+
+</html>

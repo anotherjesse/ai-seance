@@ -1,10 +1,44 @@
-import index from "./index.html";
+import indexHTML from "./index.html";
+import setupHTML from "./setup.html";
 import Replicate from "replicate";
 import * as fal from "@fal-ai/serverless-client";
+import { Client } from "./claudette.js";
 
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(request.url);
+
+		if (url.pathname === '/api/llm' && request.method === 'POST') {
+			const { prompt, system, secret, prefill, imageUrl } = await request.json();
+
+			if (secret !== env.SECRET) {
+				return new Response(JSON.stringify({ error: 'Invalid secret' }), {
+					status: 401,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+
+			const chat = new Client(env.ANTHROPIC_API_KEY);
+			
+			let images = [];
+			if (imageUrl) {
+				const imageResponse = await fetch(imageUrl);
+				console.log(imageResponse)
+				const imageBuffer = await imageResponse.arrayBuffer();
+				const base64Image = arrayBufferToBase64(imageBuffer);
+				images = [{
+					media_type: imageResponse.headers.get('content-type'),
+					data: base64Image
+				}];
+			}
+
+			const response = await chat.call([prompt], { prefill, sp: system, images });
+			const content = response.content[0].text;
+
+			return new Response(JSON.stringify({ content }), {
+				headers: { 'Content-Type': 'application/json' }
+			});
+		}
 
 		if (url.pathname === '/api/generate-image' && request.method === 'POST') {
 			try {
@@ -15,8 +49,6 @@ export default {
 
 				fal.config({
 					credentials: env.FAL_KEY
-
-
 				});
 
 
@@ -104,9 +136,25 @@ export default {
 			return Response.json(results);
 		}
 
+		if (url.pathname == "/setup") {
+			return new Response(setupHTML, {
+				headers: { 'Content-Type': 'text/html' }
+			})
+		}
+
 		// Serve the HTML for any other request
-		return new Response(index, {
+		return new Response(indexHTML, {
 			headers: { 'Content-Type': 'text/html' }
 		});
 	},
 };
+
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
