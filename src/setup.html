@@ -34,21 +34,22 @@
     <ul id="conceptList"></ul>
 
     <h2>Generator Prompt</h2>
-    <textarea id="generatorInput" rows="5" placeholder="Enter your prompt"></textarea>
+    <textarea id="generatorInput" rows="15" placeholder="Enter your prompt"></textarea>
     <button id="generateButton" onclick="generateTheme()">Generate Theme</button>
 
     <h2>Theme</h2>
-    <textarea id="themeInput" rows="5" placeholder="Enter your theme"></textarea>
+    <textarea id="themeInput" rows="15" placeholder="Enter your theme"></textarea>
 
     <h2>Seance Prompt</h2>
-    <textarea id="seancePromptInput" rows="5" placeholder="Enter your seance prompt"></textarea>
+    <textarea id="seancePromptInput" rows="15" placeholder="Enter your seance prompt"></textarea>
 
     <span id="statusMessage"></span>
 
-    <input type="text" id="imageUrlInput" placeholder="Enter your image URL" value="https://replicate.delivery/pbxt/SN9xjfzk4CU3C6dsT6myo7a0bIT0Z2wLT5ww7nQelWNQ9MFTA/out.jpg">
+    <input type="text" id="imageUrlInput" placeholder="Enter your image URL"
+        value="https://replicate.delivery/pbxt/SN9xjfzk4CU3C6dsT6myo7a0bIT0Z2wLT5ww7nQelWNQ9MFTA/out.jpg">
     <input type="text" id="imageQuestionInput" placeholder="Enter your image question" value="describe the image">
     <button onclick="questionImage()">Generate Image</button>
-    <textarea id="imageOutput" rows="5" placeholder="Image output will appear here"></textarea>
+    <textarea id="imageOutput" rows="15" placeholder="Image output will appear here"></textarea>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
@@ -93,7 +94,7 @@
                 body: JSON.stringify({
                     secret: secret,
                     system: generatorInput.value,
-                    prompt: concepts.join("\n").trim(),
+                    messages: [concepts.join("\n").trim()],
                     prefill: "Theme:"
                 })
             }).then(async response => {
@@ -104,17 +105,17 @@
                 }
                 return response.json();
             })
-            .then(data => {
-                themeInput.value = data.content;
-                saveData();
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            })
-            .finally(() => {
-                generateButton.disabled = false;
-                generateButton.textContent = 'Generate Theme';
-            });
+                .then(data => {
+                    themeInput.value = data.content;
+                    saveData();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                })
+                .finally(() => {
+                    generateButton.disabled = false;
+                    generateButton.textContent = 'Generate Theme';
+                });
         }
 
         function questionImage() {
@@ -125,16 +126,16 @@
                 method: "POST",
                 body: JSON.stringify({
                     secret: secret,
-                    prompt: imageQuestion,
+                    messages: [imageQuestion],
                     imageUrl: imageUrl,
                     system: "You are an expert at describing images. Describe the image in detail.",
                     prefill: "Describe the image in detail:"
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                imageOutput.value = data.content;
-            })
+                .then(response => response.json())
+                .then(data => {
+                    imageOutput.value = data.content;
+                })
         }
 
         let saveDataTimeout;
@@ -145,12 +146,12 @@
             localStorage.setItem('seancePrompt', seancePromptInput.value);
 
             statusMessage.textContent = 'Data saved!';
-            
+
             // Clear any existing timeout
             if (saveDataTimeout) {
                 clearTimeout(saveDataTimeout);
             }
-            
+
             // Set a new timeout
             saveDataTimeout = setTimeout(() => {
                 statusMessage.textContent = '';
@@ -160,8 +161,30 @@
         function loadData() {
             const savedConcepts = localStorage.getItem('concepts');
             const savedTheme = localStorage.getItem('theme');
-            const savedGenerator = localStorage.getItem('generator');
-            const savedSeancePrompt = localStorage.getItem('seancePrompt');
+            let savedGenerator = localStorage.getItem('generator');
+            if (!savedGenerator) {
+                savedGenerator = `We are having a seance, your job is to take the list of concepts provided and create a coherent theme from them. Leave out any animals.
+
+Make the theme 2 sentences at most. This will be used to flavor user inputs later on and its important that the full effect of the theme is passed on to this future data.`;
+                localStorage.setItem('generator', savedGenerator);
+            }
+            let savedSeancePrompt = localStorage.getItem('seancePrompt');
+            if (!savedSeancePrompt) {
+                savedSeancePrompt = `You are an expert at generating prompts for images made by generative deep learning AI models.  The users will ask a question or provide a comment - and you should think about the theme provided, as well as the history of the conversation so far (if there is some) - and answer this with a new prompt for the text-to-image model. This should be flavored, in the feeling of the theme provided below.
+
+There will be an image from a previous generative cycle of this process, and this should be used (as well as the new prompt which is flavored by the theme provided) to generate the next image output. 
+
+We are co-generating a story based on the images and user questions, one cycle at a time. This is the theme:
+
+<THEME>
+$THEME
+<THEME>
+
+For this image, include something about $OFFERING in your prompt.
+
+Important: 1) Please don't include anything pertaining to animals. 2) The prompt should be two sentences at most, which is the essence of the ideas in the prompt.`;
+                localStorage.setItem('seancePrompt', savedSeancePrompt);
+            }
 
             if (savedConcepts) {
                 concepts = JSON.parse(savedConcepts);
