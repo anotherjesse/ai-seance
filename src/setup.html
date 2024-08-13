@@ -8,7 +8,6 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -22,11 +21,27 @@
         button {
             margin-right: 10px;
         }
+
+        table {
+            width: 100%;
+        }
+
+        td {
+            border-bottom: 1px solid #ddd;
+            padding: 8px;
+            vertical-align: top;
+        }
     </style>
 </head>
 
 <body>
-    <h1>Concept and Prompt Manager</h1>
+
+    <h1><a href="/v2">V2</a> Settings</h1>
+    <h2>Suffix</h2>
+    <div>
+        <p>Phrase to append to prompts - use $OFFERING to insert a random concept</p>
+        <input type="text" id="suffix" placeholder="phrase to append to prompts" />
+    </div>
 
     <h2>Concepts</h2>
     <input type="text" id="conceptInput" placeholder="Enter a concept">
@@ -40,16 +55,26 @@
     <h2>Theme</h2>
     <textarea id="themeInput" rows="15" placeholder="Enter your theme"></textarea>
 
-    <h2>Seance Prompt</h2>
+    <h2>Seance System Prompt</h2>
     <textarea id="seancePromptInput" rows="15" placeholder="Enter your seance prompt"></textarea>
 
     <span id="statusMessage"></span>
 
-    <input type="text" id="imageUrlInput" placeholder="Enter your image URL"
-        value="https://replicate.delivery/pbxt/SN9xjfzk4CU3C6dsT6myo7a0bIT0Z2wLT5ww7nQelWNQ9MFTA/out.jpg">
-    <input type="text" id="imageQuestionInput" placeholder="Enter your image question" value="describe the image">
-    <button onclick="questionImage()">Generate Image</button>
-    <textarea id="imageOutput" rows="15" placeholder="Image output will appear here"></textarea>
+    <hr>
+
+    <div id="demo">
+        <h2>Test Prompt Flow</h2>
+        <table id="results"></table>
+        <div>
+            <input id="userPrompt" type="text" placeholder="Enter your prompt"
+                onkeydown="if (event.key === 'Enter') { submit20(); }; if (event.key === 'Escape') { event.preventDefault(); event.target.value = '' }"
+                value="is there a spirit with us today?">
+            <textarea id="appends" rows="10" placeholder="Enter your appends">in the style of $OFFERING
+with hints of $OFFERING
+</textarea>
+            <button id="submitPrompt" onclick="submit20()">Submit</button>
+        </div>
+    </div>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
@@ -61,6 +86,7 @@
         const themeInput = document.getElementById('themeInput');
         const generatorInput = document.getElementById('generatorInput');
         const seancePromptInput = document.getElementById('seancePromptInput');
+        const suffix = document.getElementById('suffix');
 
         function addConcept() {
             const concept = conceptInput.value.trim();
@@ -144,6 +170,7 @@
             localStorage.setItem('theme', themeInput.value);
             localStorage.setItem('generator', generatorInput.value);
             localStorage.setItem('seancePrompt', seancePromptInput.value);
+            localStorage.setItem('suffix', suffix.value);
 
             statusMessage.textContent = 'Data saved!';
 
@@ -161,6 +188,7 @@
         function loadData() {
             const savedConcepts = localStorage.getItem('concepts');
             const savedTheme = localStorage.getItem('theme');
+            const savedSuffix = localStorage.getItem('suffix');
             let savedGenerator = localStorage.getItem('generator');
             if (!savedGenerator) {
                 savedGenerator = `We are having a seance, your job is to take the list of concepts provided and create a coherent theme from them. Leave out any animals.
@@ -202,6 +230,9 @@ Important: 1) Please don't include anything pertaining to animals. 2) The prompt
             if (savedSeancePrompt) {
                 seancePromptInput.value = savedSeancePrompt;
             }
+            if (savedSuffix) {
+                suffix.value = savedSuffix;
+            }
         }
 
         conceptInput.addEventListener('keypress', function (event) {
@@ -211,6 +242,8 @@ Important: 1) Please don't include anything pertaining to animals. 2) The prompt
             }
         });
 
+        suffix.addEventListener('input', saveData);
+
         const statusMessage = document.getElementById('statusMessage');
 
         themeInput.addEventListener('input', saveData);
@@ -218,6 +251,164 @@ Important: 1) Please don't include anything pertaining to animals. 2) The prompt
         seancePromptInput.addEventListener('input', saveData);
 
         loadData();
+
+        const userPrompt = document.getElementById('userPrompt');
+        const submitPrompt = document.getElementById('submitPrompt');
+        const results = document.getElementById('results');
+
+        let lastImage = null;
+        let history = [];
+
+        // submitPrompt.addEventListener('click', handlePromptSubmission);
+
+        function show(info) {
+            let row = document.createElement('tr');
+            if (info.src) {
+                let cell = document.createElement('td');
+                let img = document.createElement('img');
+                img.src = info.src;
+                img.style.height = '256px';
+                img.style.width = '256px';
+                cell.appendChild(img);
+                row.appendChild(document.createElement('td'));
+                row.appendChild(cell);
+            } else {
+                let cell = document.createElement('td');
+                cell.innerHTML = info.kind;
+                row.appendChild(cell);
+                cell = document.createElement('td');
+                let div = document.createElement('div');
+                console.log(info.content);
+                div.innerHTML = info.content.replace(/</g, "&lt;").replace(/\\n/g, '<br>');
+                cell.appendChild(div);
+                row.appendChild(cell);
+            }
+            results.appendChild(row);
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        let count = 0;
+        async function render(prompt, img) {
+            setTimeout(async () => {
+                generateImage(prompt).then(url => {
+                    img.src = url;
+                }).catch(error => {
+                    generateImage(prompt).then(url => {
+                        img.src = url;
+                    })
+                });
+            }, 2000 * count);
+            count++;
+        }
+
+        async function submit20() {
+            let userPrompt = document.getElementById('userPrompt');
+            let appends = document.getElementById('appends').value.split('\n').map(a => a.trim());
+
+            let thead = document.createElement('thead');
+            let tr = document.createElement('tr');
+            tr.appendChild(document.createElement('th'));
+            for (let column = 0; column < concepts.length; column++) {
+                let offering = concepts[column];
+                let th = document.createElement('th');
+                th.innerHTML = offering;
+                tr.appendChild(th);
+            }
+            thead.appendChild(tr);
+            results.appendChild(thead);
+
+            for (let row = 0; row < concepts.length; row++) {
+                let tr = document.createElement('tr');
+                let th = document.createElement('th');
+                th.innerHTML = appends[row];
+                tr.appendChild(th);
+                for (let column = 0; column < concepts.length; column++) {
+                    let offering = concepts[column];
+                    let td = document.createElement('td');
+                    let img = document.createElement('img');
+                    let modifiedPrompt = userPrompt.value + appends[row].replace('$OFFERING', offering);
+                    render(modifiedPrompt, img);
+                    img.title = modifiedPrompt;
+                    img.style.height = '256px';
+                    img.style.width = '256px';
+                    td.appendChild(img);
+                    tr.appendChild(td);
+                }
+                results.appendChild(tr);
+            }
+        }
+
+        async function handlePromptSubmission() {
+            const prompt = userPrompt.value.trim();
+            if (!prompt) return;
+
+            show({ kind: 'User', content: prompt });
+
+            try {
+                const result = await promptify(prompt);
+                show({ kind: 'AI', content: result });
+                await generateImage(result);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            }
+        }
+
+        async function promptify(prompt) {
+            history.push(prompt);
+
+            const filtered = concepts.filter(concept =>
+                !concept.endsWith('..') &&
+                !concept.endsWith('. ') &&
+                !concept.endsWith('  ')
+            );
+
+            const offering = filtered[Math.floor(Math.random() * filtered.length)];
+            const system = seancePromptInput.value.replace('$THEME', themeInput.value).replace('$OFFERING', offering);
+
+            show({ kind: 'System', content: system });
+
+            const response = await fetch("/api/llm", {
+                method: "POST",
+                body: JSON.stringify({
+                    secret: secret,
+                    messages: history,
+                    system: system,
+                    imageUrl: lastImage,
+                    prefill: "Prompt:"
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('API request failed');
+            }
+
+            const data = await response.json();
+            console.log(data);
+            const result = data.content.replace('PROMPT:', '').trim();
+            history.push(result);
+            return result;
+        }
+
+        async function generateImage(prompt) {
+            const seed = 42; // Math.floor(Math.random() * 1000000000);
+            const response = await fetch('/api/generate-image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ prompt, seed, secret, model: 'sdxl', event: 'setup_test', meta: { question: userPrompt.value } }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Image generation failed');
+            }
+
+            const data = await response.json();
+            lastImage = data.imageUrl;
+            return data.imageUrl;
+        }
+
     </script>
 </body>
 

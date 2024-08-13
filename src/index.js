@@ -9,31 +9,46 @@ export default {
 		const url = new URL(request.url);
 
 		if (url.pathname === '/api/llm' && request.method === 'POST') {
-			const { messages, system, secret, prefill, imageUrl } = await request.json();
+			async function askClaude() {
+				const { messages, system, secret, prefill, imageUrl } = await request.json();
 
-			if (secret !== env.SECRET) {
-				return new Response(JSON.stringify({ error: 'Invalid secret' }), {
-					status: 401,
-					headers: { 'Content-Type': 'application/json' }
-				});
+				if (secret !== env.SECRET) {
+					return new Response(JSON.stringify({ error: 'Invalid secret' }), {
+						status: 401,
+						headers: { 'Content-Type': 'application/json' }
+					});
+				}
+
+				const chat = new Client(env.ANTHROPIC_API_KEY);
+
+				let images = [];
+				if (imageUrl) {
+					const imageResponse = await fetch(imageUrl);
+					console.log(imageResponse)
+					const imageBuffer = await imageResponse.arrayBuffer();
+					const base64Image = arrayBufferToBase64(imageBuffer);
+					images = [{
+						media_type: imageResponse.headers.get('content-type'),
+						data: base64Image
+					}];
+				}
+
+				const response = await chat.call(messages, { prefill, sp: system, images });
+				return response.content[0].text;
 			}
 
-			const chat = new Client(env.ANTHROPIC_API_KEY);
-
-			let images = [];
-			if (imageUrl) {
-				const imageResponse = await fetch(imageUrl);
-				console.log(imageResponse)
-				const imageBuffer = await imageResponse.arrayBuffer();
-				const base64Image = arrayBufferToBase64(imageBuffer);
-				images = [{
-					media_type: imageResponse.headers.get('content-type'),
-					data: base64Image
-				}];
+			// with retry on failures only 4 times
+			let content;
+			for (let i = 0; i < 4; i++) {
+				try {
+					content = await askClaude();
+					if (content) {
+						break;
+					}
+				} catch (error) {
+					console.log(error);
+				}
 			}
-
-			const response = await chat.call(messages, { prefill, sp: system, images });
-			const content = response.content[0].text;
 
 			return new Response(JSON.stringify({ content }), {
 				headers: { 'Content-Type': 'application/json' }
@@ -48,7 +63,7 @@ export default {
 				});
 
 				const sdxl_fal = ({ seed, prompt }) =>
-					fal.subscribe("fal-ai/fast-sdxl", {
+					fal.subscribe("fal-ai/flux-realism", {
 						input: {
 							prompt, seed, enable_safety_checker: false, image_size: "square_hd",
 						},

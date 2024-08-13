@@ -517,7 +517,6 @@
         }
 
         async function promptify(prompt) {
-            history.push(prompt);
 
             let filtered = concepts.filter(concept =>
                 !concept.endsWith('..') &&
@@ -526,35 +525,14 @@
             );
 
             let offering = filtered[Math.floor(Math.random() * filtered.length)];
-            let system = localStorage.getItem('seancePrompt').replace('$THEME', theme).replace('$OFFERING', offering);
-            if (!lastImage) {
-                lastImage = null;
+            let suffix = localStorage.getItem('suffix') || '';
+            if (suffix) {
+                prompt = prompt + ' ' + suffix.replace('$THEME', theme).replace('$OFFERING', offering);
             }
 
-            console.log({ offering })
-
-            let response = await fetch("/api/llm", {
-                method: "POST",
-                body: JSON.stringify({
-                    secret,
-                    messages: history,
-                    system,
-                    imageUrl: lastImage,
-                    prefill: "Prompt:"
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    console.log(data);
-                    return data.content.replace('PROMPT:', '').trim();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-
-            history.push(response);
-
-            return response;
+            console.log({ offering, prompt })
+            history.push(prompt);
+            return prompt
         }
 
     </script>
