@@ -304,14 +304,14 @@
                 conjuring.currentTime = 0;
                 fadeOverlay.classList.add('fade-in');
 
-                let result = await promptify(prompt);
+                let {prompt: result, offering} = await promptify(prompt);
 
                 const response = await fetch('/api/generate-image', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ prompt: result, seed, secret, model, event: eventName, meta: { question: prompt } }),
+                    body: JSON.stringify({ prompt: result, seed, secret, model, event: eventName, meta: { question: prompt, offering } }),
                 });
 
                 if (response.status === 401) {
@@ -527,7 +527,7 @@
 
             console.log({ offering, prompt })
             history.push(prompt);
-            return prompt
+            return { prompt, offering }
         }
 
     </script>
