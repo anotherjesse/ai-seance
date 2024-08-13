@@ -91,10 +91,6 @@
             opacity: 1;
         }
 
-        #fadeOverlay.pulsing {
-            animation: pulse 2s infinite;
-        }
-
         #conceptAnimation {
             position: absolute;
             top: 50%;
@@ -306,10 +302,9 @@
                 shimmer.play();
                 conjuring.pause();
                 conjuring.currentTime = 0;
-                fadeOverlay.classList.add('fade-in', 'pulsing');
+                fadeOverlay.classList.add('fade-in');
 
                 let result = await promptify(prompt);
-
 
                 const response = await fetch('/api/generate-image', {
                     method: 'POST',
