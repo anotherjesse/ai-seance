@@ -62,18 +62,25 @@ export default {
 					credentials: env.FAL_KEY
 				});
 
+				let { prompt, seed, event, secret, meta, model } = await request.json();
+
+				model = model || "fal-ai/fast-sdxl";
+
 				const sdxl_fal = ({ seed, prompt }) =>
-					fal.subscribe("fal-ai/flux-realism", {
+					fal.subscribe(model, {
 						input: {
 							prompt, seed, enable_safety_checker: false, image_size: "square_hd",
 						},
 						logs: false,
-					}).then(result => result.images[0].url);
+					}).then(result => result.images[0].url).catch(error => {
+						console.log(error);
+						return null;
+					});
 
-				let { prompt, seed, event, secret, meta } = await request.json();
 				if (!meta) {
 					meta = {};
 				}
+				meta.model = model;
 
 				if (secret !== env.SECRET) {
 					return new Response(JSON.stringify({ error: 'Invalid secret' }), {

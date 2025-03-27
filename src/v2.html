@@ -148,7 +148,6 @@
         const submitSecretButton = document.getElementById('submitSecret');
         const secretInput = document.getElementById('secretInput');
         const eventNameInput = document.getElementById('eventNameInput');
-        const model = window.location.search.includes('sd3') ? 'sd3' : 'sdxl';
 
         let secret = '';
         let eventName = '';
@@ -271,14 +270,16 @@
             }
         });
 
-        async function updateImage() {
+        async function updateImage(prompt) {
             if (animationStarted) {
                 document.getElementById('conceptAnimation').style.display = 'none';
                 animationStarted = false;
             }
 
             clearError();
-            let prompt = bottomText.value.trim();
+            if (!prompt) {
+                prompt = bottomText.value.trim();
+            }
             let seed = Math.floor(Math.random() * 1000000000);
 
             if (prompt.includes('|')) {
@@ -304,8 +305,16 @@
                 conjuring.currentTime = 0;
                 fadeOverlay.classList.add('fade-in');
 
-                let {prompt: result, offering} = await promptify(prompt);
+                let { prompt: result, offering } = await promptify(prompt);
 
+                // Show spiral animation for the prompt
+                // const conceptAnimation = document.getElementById('conceptAnimation');
+                // conceptAnimation.style.display = 'block';
+                spiralText(result)
+
+                let model = localStorage.getItem('model') || 'fal-ai/fast-sdxl';
+
+                // After spiral animation, proceed with image generation
                 const response = await fetch('/api/generate-image', {
                     method: 'POST',
                     headers: {
@@ -430,13 +439,13 @@
             })
                 .then(data => {
                     theme = data.content;
+                    theme = theme.replace('Theme:', '').trim();
                     console.log(theme);
                     localStorage.setItem('theme', theme);
                     showTheme();
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    restoreAnimationSpeed();
                 });
         }
 
@@ -452,19 +461,25 @@
             conceptAnimation.innerHTML = '';
             conceptAnimation.style.display = 'none';
 
-            // Split the theme into words
-            const words = theme.split(/\s+/);
+            // spiralText(theme);
+
+            updateImage(theme);
+        }
+
+        function spiralText(text) {
+            // Split the text into words
+            const words = text.split(/\s+/);
+            let offset = Math.floor(Math.random() * 100);
 
             // Animate each word
             words.forEach((word, index) => {
                 setTimeout(() => {
-                    animateWord(word, index, words.length);
-                }, index * 100); // Start each word animation with a 1-second delay
+                    animateWord(word, offset + index, words.length);
+                }, index * 150);
             });
         }
 
         function animateWord(word, index, totalWords) {
-            // Create a new element for animation
             const animatedWord = document.createElement('div');
             animatedWord.textContent = word;
             animatedWord.style.position = 'absolute';
